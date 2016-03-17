@@ -41,6 +41,9 @@ func main() {
     b, _ := ioutil.ReadFile("/path/a.txt")
     ftp.Stor("/path/a.txt", b)
     
+    // retr file
+    ftp.Retr("/opsmonitor.jpg", "/tmp/opsmonitor.jpg")
+    
     ftp.Quit()                                                                  
 }
 ```
