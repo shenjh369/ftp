@@ -7,7 +7,16 @@ import (
 	"net"
 	"strconv"
 	"strings"
+    "os"
+    "bufio"
+    "io"
+    "log"
+    "github.com/toolkits/file"
 )
+
+func init() {
+    log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+}
 
 type FTP struct {
 	host    string
@@ -26,7 +35,7 @@ type FTP struct {
 
 func (ftp *FTP) debugInfo(s string) {
 	if ftp.Debug {
-		fmt.Println(s)
+		log.Println(s)
 	}
 }
 
@@ -110,6 +119,47 @@ func (ftp *FTP) Stor(file string, data []byte) {
 		ftp.stream = data
 	}
 	ftp.Request("STOR " + file)
+}
+
+func (ftp *FTP) Retr(path, dest string) {
+    ftp.Request("TYPE I")
+    ftp.Pasv()
+
+    cmd := "RETR " + path
+    ftp.conn.Write([]byte(cmd + "\r\n"))
+    conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", ftp.host, ftp.pasv))
+    if err != nil {
+        log.Println("dial ftp fail", err.Error())
+        return
+    }
+    defer conn.Close()
+
+    os.MkdirAll(strings.TrimRight(dest, file.Basename(dest)), os.ModePerm)
+
+    f, ferr := os.OpenFile(dest, os.O_CREATE | os.O_TRUNC, os.ModePerm)
+    if ferr != nil {
+        log.Println(ferr.Error())
+        return
+    }
+    defer f.Close()
+
+    buf := bufio.NewWriter(f)
+    defer buf.Flush()
+
+    for {
+        ret := make([]byte, 4096)
+        n, err := conn.Read(ret)
+        if err == io.EOF {
+            break
+        }
+        buf.Write(ret[:n])
+    }
+    ftp.Response()
+
+    defer func() {
+        ftp.pasv = 0
+        ftp.stream = nil
+    }()
 }
 
 func (ftp *FTP) Quit() {
