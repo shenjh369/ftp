@@ -121,7 +121,7 @@ func (ftp *FTP) Stor(file string, data []byte) {
 	ftp.Request("STOR " + file)
 }
 
-func (ftp *FTP) Retr(path, dest string) {
+func (ftp *FTP) Retr(path, dest string) error{
     ftp.Request("TYPE I")
     ftp.Pasv()
 
@@ -130,7 +130,7 @@ func (ftp *FTP) Retr(path, dest string) {
     conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", ftp.host, ftp.pasv))
     if err != nil {
         log.Println("dial ftp fail", err.Error())
-        return
+        return err
     }
     defer conn.Close()
 
@@ -139,7 +139,7 @@ func (ftp *FTP) Retr(path, dest string) {
     f, ferr := os.OpenFile(dest, os.O_CREATE | os.O_TRUNC, os.ModePerm)
     if ferr != nil {
         log.Println(ferr.Error())
-        return
+        return ferr
     }
     defer f.Close()
 
@@ -160,6 +160,7 @@ func (ftp *FTP) Retr(path, dest string) {
         ftp.pasv = 0
         ftp.stream = nil
     }()
+    return nil
 }
 
 func (ftp *FTP) Quit() {
